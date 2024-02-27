@@ -6,6 +6,14 @@ import Data.List.Split
 import Data.Function (on)
 import qualified Data.Text as T
 
+-- Tree structure
+--data Tree a b  = EmptyTree | Node a b (Tree a b) (Tree a b)| Leaf a deriving (Show)
+data Tree = EmptyTree | Leaf | Node (Tree) (Tree) deriving (Show, Eq)
+
+--treeInsert xs treeStruct 
+--    | treeStruct == EmptyTree  && (head xs) == "Node" = Node (treeInsert (drop 1 xs))
+
+
 
 main = do 
     contents <- readFile "sample-input.txt"
@@ -13,21 +21,11 @@ main = do
     putStrLn "Original"
     print contents
     putStrLn "\n"
-
-    putStrLn "Original with removed national characters"
-    let modifiedContents = T.unpack (T.replace (T.pack "\9532\214") (T.pack "r") (T.pack contents))
-    let modifiedContents2 = T.unpack (T.replace (T.pack "\9500\161") (T.pack "i") (T.pack modifiedContents))
-    print $ modifiedContents2
-    putStrLn "\n"
-
     putStrLn "Original worded and concatenated:"
-    print $  splitInputByWords modifiedContents2
+    print $  splitInputByWords contents
     putStrLn "\n"
     putStrLn "Removed (:)"
-    print $ map (removeStrednik) $ splitInputByWords modifiedContents2
-
-    --putStrLn "Removed national characters"
-    --print $ map (subsChar) $ map (removeStrednik) $ splitInputByWords contents
+    print $ map (removeStrednik) $ splitInputByWords contents
 
 
   
@@ -39,4 +37,20 @@ splitInputByWords list = (map words $ lines list)
 removeStrednik contents = map removePunc contents
     where removePunc list = [x | x <- list, not (x `elem` ":,")] 
 
-      
+--addBrackets (x:xs) acc right 
+--    | x == "Node" = "(" : x : (addBrackets xs (acc+1) False)
+--    | x == "Leaf" && right == True  = (x : (replicate acc ")")) : (addBrackets xs 0 False)
+--    | x == "Leaf" && right == False = (x : (addBrackets acc True))
+
+
+-- Funkcia prejde zoznam stringov (zoznam zoznamov charakterov) a ak bude prvy znak N alebo L tak sa urobi akcia
+testStringList (x:xs)  
+    | null xs           = ["L" : ")" : []]
+    | (head x) == "N"   = ("(" : "N" : []) : testStringList xs
+    | (head x) == "L"   = (")" : "L" : []) : testStringList xs
+
+testString (x:xs)
+    | null xs = [x]
+    | x == 'k' =  '(' : x : (testString xs)
+    | otherwise = x :  (testString xs)
+  
