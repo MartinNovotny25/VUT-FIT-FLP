@@ -30,19 +30,12 @@ parseTree (x:xs)
 
 
 
-        
- take (getSndFromFind [["N", "0"], ["L", "1"], ["L", "1"], ["N", "1"]]) [["L", "1"], ["L", "1"], ["N", "1"]]
-
--- Funkcne
---testStringList (x:xs)
---    | xs == [] = if (x == ["N"]) then [["N"]] else [["O"]]
---    | x == ["N"] = x : testStringList xs
---    | otherwise = x : testStringList xs
-
--- [["Node","0","5.5"],["Node","1","3.3"],["Leaf","X"],["Leaf","Y"],
--- --["Node","2","3.0"],["Leaf","B"],["Leaf","C"]]
-
 testStringList (x:xs)
     | xs == [] = if (x == ["Node"]) then [["Node END"]] else [["Leaf END"]]
     | (head x) == "Node" = ([(head x) ++ ")))"] ++ (tail x)) : testStringList xs
     | (head x) == "Leaf" = ([(head x) ++ "!!!"] ++ (tail x)) : testStringList xs    
+
+countSpaces (x:xs) = helper (x:xs) 0
+                        where helper (x:xs) count 
+                                | x == ' ' = helper xs (count + 1)
+                                | otherwise = count    
