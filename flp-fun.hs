@@ -21,20 +21,12 @@ data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Show, Eq)
 main = do 
     contents <- readFile "sample-input.txt"
     putStrLn "\n"
-    putStrLn "Original"
+    putStrLn "Input:"
     print contents
     putStrLn "\n"
-    putStrLn "With added nested levels"
-    print $ addNestLevel contents
-    putStrLn "\n"
-    putStrLn "Original worded and concatenated:"
-    print $  splitInputByWords contents
-    putStrLn "\n"
-    putStrLn "Removed (:)"
-    print $ map (removeStrednik) $ splitInputByWords contents 
-    putStrLn "\n"
-    putStrLn "Parsed Tree structure"
+    putStrLn "Parsed Tree structure:"
     print $ parseTree $ map (removeStrednik) $ splitInputByWords contents
+    putStrLn "\n"
 
 
   
