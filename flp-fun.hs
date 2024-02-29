@@ -40,10 +40,12 @@ classifyAll (x:xs) tree
 -- classification porovnáva treshold hodnotu aktuálneho uzlu so vstupom
 -- Mensia rovná -> ľavý podstrom, väčšia -> pravý podstrom
 -- Ak narazíme na Leaf, vrátime triedu
+classification [] (Node a b left right) = error "Ended on a node"
 classification (x:xs) (Node a b left right) 
     | x <= b = classification xs left
     | otherwise = classification xs right
-classification x (Leaf a) = a
+classification (x:xs) (Leaf a) 
+    | xs == [] = a    
 
 
 
