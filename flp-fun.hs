@@ -16,7 +16,8 @@ data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Show, Eq)
 
 -- Main ----------------------------------------------------------------------
 main = do 
-    contents <- readFile "sample-input2.txt"
+    contents <- readFile "sample-input.txt"
+    --values <- readFile ""
     putStrLn "\n"
     putStrLn "Input:"
     print contents
@@ -25,10 +26,18 @@ main = do
     print $ parseTree $ map (removeFluff) $ splitInputByWords contents
     putStrLn "\n"
 
+    print $ "Klasifikacia"
+    putStrLn $ classifyAll [[2.4, 1.3], [6.1, 0.3]] $ parseTree $ map (removeFluff) $ splitInputByWords contents
+
 
 -- Klasifikácia
-
-
+classifyAll (x:xs) tree
+    | xs == [] = classification x tree
+    | otherwise = (classification x tree) ++ "\n" ++ classifyAll (xs) tree 
+classification (x:xs) (Node a b left right) 
+    | x <= b = classification xs left
+    | otherwise = classification xs right
+classification x (Leaf a) = a
 
 
 
