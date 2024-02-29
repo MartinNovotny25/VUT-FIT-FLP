@@ -45,7 +45,7 @@ classifyAll (x:xs) tree
     | otherwise = (classification x tree) ++ "\n" ++ classifyAll (xs) tree 
 
 -- classification porovnáva treshold hodnotu aktuálneho uzlu so vstupom
--- Mensia rovná - ľavý podstrom, väčšia - pravý podstrom
+-- Mensia rovná -> ľavý podstrom, väčšia -> pravý podstrom
 -- Ak narazíme na Leaf, vrátime triedu
 classification (x:xs) (Node a b left right) 
     | x <= b = classification xs left
