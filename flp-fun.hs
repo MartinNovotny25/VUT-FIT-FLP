@@ -12,12 +12,18 @@ import Data.List.Split
 import Data.Function (on)
 import qualified Data.Text as T
 
+-- Datový typ strom
+-- Leaf v sebe obsahuje triedu
+-- Node v sebe obsahuje ID, treshold hodnotu a dvoch potomkov
 data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Show, Eq)
 
 -- Main ----------------------------------------------------------------------
 main = do 
     contents <- readFile "sample-input.txt"
-    --values <- readFile ""
+    values <- readFile "input-values.txt"
+    putStrLn "\n"
+    putStrLn "INPUT VALUES FOR CLASSIFICATION:"
+    print $ parseClassificationValues values
     putStrLn "\n"
     putStrLn "Input:"
     print contents
@@ -27,13 +33,20 @@ main = do
     putStrLn "\n"
 
     print $ "Klasifikacia"
-    putStrLn $ classifyAll [[2.4, 1.3], [6.1, 0.3]] $ parseTree $ map (removeFluff) $ splitInputByWords contents
+    putStrLn $ classifyAll (parseClassificationValues values) $ parseTree $ map (removeFluff) $ splitInputByWords contents
 
 
--- Klasifikácia
+------  Klasifikácia ------------------------------------------
+
+-- classifyAll je pomocná funckia, ktorá aplikuje funckiu classification pre každý
+-- zoznam v zozname hodnôť pre klasifikáciu
 classifyAll (x:xs) tree
     | xs == [] = classification x tree
     | otherwise = (classification x tree) ++ "\n" ++ classifyAll (xs) tree 
+
+-- classification porovnáva treshold hodnotu aktuálneho uzlu so vstupom
+-- Mensia rovná - ľavý podstrom, väčšia - pravý podstrom
+-- Ak narazíme na Leaf, vrátime triedu
 classification (x:xs) (Node a b left right) 
     | x <= b = classification xs left
     | otherwise = classification xs right
@@ -41,9 +54,7 @@ classification x (Leaf a) = a
 
 
 
-
-  
--- Parse text ------------------------------------------------------------------
+------  Parse text  ------------------------------------------------------------------
 -- splitInputByWords dostane prečítaný vstupný reťazec, s pomocou addNestLevel appendne každému
 -- prvku stromu jeho hĺbku zanorenia. Keďže addNestLevel vráti zoznam retazcov, pouzijeme map words
 -- a kazdy reťazec v zozname rozdelíme na slová
@@ -96,3 +107,8 @@ parseTree (x:xs)
     where getSndFromFind (x:xs) = snd (findNestLevel ((level x)+1) xs) 
             where level element =  (read (last element) :: Float)      
   
+-- Parsovanie hodnôt pre klasifikáciu  
+-- Pôvodný string rozdelíne podla znakov nového riadku a rozdelíme
+-- Následne vytvoríme nový zoznam, kde budú pôvodné hodnoty typu Float
+parseClassificationValues input = map makeFloat $ (map (splitOn (",")) $ lines input)
+                                        where makeFloat list = [read x :: Float | x <- list ]
