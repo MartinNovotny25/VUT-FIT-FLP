@@ -4,13 +4,10 @@
 -- 29/02/2024
 -- VUT FIT
 
+import System.Environment (getArgs)
 import System.IO (readFile)
-import Control.Applicative ((<$>))
-import Data.Maybe (isJust, fromJust)
 import Data.List 
 import Data.List.Split
-import Data.Function (on)
-import qualified Data.Text as T
 
 -- Datový typ strom
 -- Leaf v sebe obsahuje triedu
@@ -18,25 +15,21 @@ import qualified Data.Text as T
 data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Show, Eq)
 
 -- Main ----------------------------------------------------------------------
+
 main = do 
-    contents <- readFile "sample-input.txt"
-    values <- readFile "input-values.txt"
-    putStrLn "\n"
-    putStrLn "INPUT VALUES FOR CLASSIFICATION:"
-    print $ parseClassificationValues values
-    putStrLn "\n"
-    putStrLn "Input:"
-    print contents
-    putStrLn "\n"
-    putStrLn "Parsed Tree structure:"
-    print $ parseTree $ map (removeFluff) $ splitInputByWords contents
-    putStrLn "\n"
 
-    print $ "Klasifikacia"
-    putStrLn $ classifyAll (parseClassificationValues values) $ parseTree $ map (removeFluff) $ splitInputByWords contents
-
+    args <- getArgs
+    case args of [] -> error "Empty"
+                 "-1" : treeInput : [dataInput] -> do 
+                                                    treeStr <- readFile treeInput   
+                                                    dataStr <- readFile dataInput
+                                                    doClass treeStr dataStr
+                 _ -> error "Argumenty coska nedobre"
 
 ------  Klasifikácia ------------------------------------------
+
+-- Spracuje vstupy a vykoná klasifikáciu
+doClass treeInput dataInput = putStrLn $ classifyAll (parseClassificationValues dataInput) $ parseTree $ map (removeFluff) $ splitInputByWords treeInput
 
 -- classifyAll je pomocná funckia, ktorá aplikuje funckiu classification pre každý
 -- zoznam v zozname hodnôť pre klasifikáciu
@@ -112,3 +105,8 @@ parseTree (x:xs)
 -- Následne vytvoríme nový zoznam, kde budú pôvodné hodnoty typu Float
 parseClassificationValues input = map makeFloat $ (map (splitOn (",")) $ lines input)
                                         where makeFloat list = [read x :: Float | x <- list ]
+
+-- Parsovanie vstupnych argumentov
+
+                              
+                                                                    
