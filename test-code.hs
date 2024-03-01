@@ -49,8 +49,20 @@ calculateAverages (x:y:xs) = ((x + y) / 2) : calculateAverages (y:xs)
 --          hodnoty na rovnakych indexoch tvoria par
 -- listOfTuples je list tuplov, kde fst je label a snd je pocet hodnot, ktore boli
 --      rozdelene do tychto labelov podla thresholdu
---splitByAvg threshold ((x:xs), (y:ys)) listOfTuples counter = 
---    | x <= threshold = splitByAvg threshold (xs, ys) 
+
+-- splitByAvg threshold ((x:xs), (y:ys)) listOfTuples =
+--     let smaller = listOfTuples
+--         bigger = listOfTuples
+--     in  if (x <= threshold) 
+--             then  splitByAvg (xs, ys) (incrementListOfTuples smaller y)
+--             else  splitByAvg (xs, ys) (incrementListOfTuples bigger y)
+
+-- splitByAvg threshold ((x:[]), (y:[])) listOfTuples =   
+--     let smaller = listOfTuples
+--         bigger = listOfTuples
+--     in  if (x <= threshold) 
+--             then incrementListOfTuples smaller y
+--             else incrementListOfTuples bigger y      
 
 incrementListOfTuples (x:xs) label  
         | (fst x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
@@ -58,3 +70,17 @@ incrementListOfTuples (x:xs) label
         | (fst x) == label && xs /= [] = (fst x, (snd x) + 1) : xs
         | (fst x) == label && xs == [] = (fst x, (snd x) + 1) : []
         | otherwise = error "incrementListOfTuples -- Critical error"
+
+getSmaller [] _ = error "getSmaller: empty list input"
+getSmaller (x:xs) threshold     
+    | x <= threshold && xs == [] = x : []
+    | x <= threshold = x : (getBigger xs threshold)
+    | x > threshold && xs == [] = []
+    | x > threshold = (getBigger xs threshold)
+
+getBigger [] _ = error "getBigger: empty list input"
+getBigger (x:xs) threshold 
+    | x > threshold && xs == [] = x : []
+    | x > threshold = x : (getBigger xs threshold)
+    | x <= threshold && xs == [] = []
+    | x <= threshold = (getBigger xs threshold)    
