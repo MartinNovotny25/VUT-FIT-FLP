@@ -33,4 +33,28 @@ parseTree (x:xs)
 countSpaces (x:xs) = helper (x:xs) 0
                         where helper (x:xs) count 
                                 | x == ' ' = helper xs (count + 1)
-                                | otherwise = if (count == 0) then 0 else count / 2    
+                                | otherwise = if (count == 0) then 0 else count / 2  
+
+-- GINI
+-- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
+
+calculateAverages (x:y:[]) = ((x + y) / 2) : []
+calculateAverages (x:y:xs) = ((x + y) / 2) : calculateAverages (y:xs)
+
+-- Gini impurity = 1 - (pravdepodobnost triedy 1)^2 - (pravdepodobnost triedy n)^2
+--calculateDispersion inputData threshold classes 
+--    | 
+
+-- ((x:xs), (x:ys)) je par zoznamov, pricom fst su ciselne hodnoty a snd su labely 
+--          hodnoty na rovnakych indexoch tvoria par
+-- listOfTuples je list tuplov, kde fst je label a snd je pocet hodnot, ktore boli
+--      rozdelene do tychto labelov podla thresholdu
+--splitByAvg threshold ((x:xs), (y:ys)) listOfTuples counter = 
+--    | x <= threshold = splitByAvg threshold (xs, ys) 
+
+incrementListOfTuples (x:xs) label  
+        | (fst x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
+        | (fst x) /= label = x : (incrementListOfTuples xs label)
+        | (fst x) == label && xs /= [] = (fst x, (snd x) + 1) : xs
+        | (fst x) == label && xs == [] = (fst x, (snd x) + 1) : []
+        | otherwise = error "incrementListOfTuples -- Critical error"
