@@ -53,33 +53,6 @@ countSpaces (x:xs) = helper (x:xs) 0
 -- GINI
 -- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
 
---calculateAverages (x:y:[]) = ((x + y) / 2) : []
---calculateAverages (x:y:xs) = ((x + y) / 2) : calculateAverages (y:xs)
-
-
-
-makePair value label = (value, label)
-
-
--- Spocita, kolko hodnot labelov bolo mensich alebo vacsich ako treshold
--- hodnoty uz su spocitane
--- vstupom je uz vytvorene pole hodnot, ktore boli bud mensie alebo vacsie 
--- a je ich treba iba spocitat
-
-
---       value listOfTuples
-countLabels x (y:[])
-    | (snd x) == (snd y) = ((fst y) +1, snd y) : []
-    | otherwise =  []
-countLabels x (y:ys) 
-    | (snd x) == (snd y) = ((fst y) +1, snd y) : countLabels x ys
-    | otherwise =  countLabels x ys
-
-
-
--- funkcia funguje tak, ze sa zo zoznamu roztriedenych prvkov vytahuju dvojice po jednom
-testFold (x:[]) list = (countLabels x list) : []
-testFold (x:xs) list = (countLabels x list) : testFold xs list     
 
 incrementListOfTuples (x:xs) label  
         | (snd x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
@@ -87,23 +60,6 @@ incrementListOfTuples (x:xs) label
         | (snd x) == label && xs /= [] = ((fst x)+1, snd x) : xs
         | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
         | otherwise = error "incrementListOfTuples -- Critical error"
-
--- TODO - ASI TO UPLNE ZMAZ A POUZI PROSTE FILTER
--- Todo - Mozno bude stacit iba jedna funckia a potom s vysledkom pouzit filter na povodny zoznam
- 
-getSmaller [] _ = error "getSmaller: empty list input"
-getSmaller (x:xs) threshold     
-    | (fst x) <= threshold && xs == [] = x : []
-    | (fst x) <= threshold = x : (getSmaller xs threshold)
-    | (fst x) > threshold && xs == [] = []
-    | (fst x) > threshold = (getSmaller xs threshold)
-
-getBigger [] _ = error "getBigger: empty list input"
-getBigger (x:xs) threshold 
-    | (fst x) > threshold && xs == [] = x : []
-    | (fst x) > threshold = x : (getBigger xs threshold)
-    | (fst x) <= threshold && xs == [] = []
-    | (fst x) <= threshold = (getBigger xs threshold)    
 
 
 
@@ -120,10 +76,28 @@ callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrem
 
 extractLabels :: [[String]] -> [(Int, String)]
 extractLabels lists = helper (map last lists) []
-    where 
-        helper [] _ = [] 
-        helper (x:xs) seen
-            | x `elem` seen = helper xs seen  
-            | otherwise = (0, x) : helper xs (x : seen)  
+    where   helper [] _ = [] 
+            helper (x:xs) seen
+                | x `elem` seen = helper xs seen  
+                | otherwise = (0, x) : helper xs (x : seen)  
+
+calculateGini totalNumber list = 1 - (helper list totalNumber)
+    where helper (x:xs) totalNumber
+            | xs == [] = (((fromIntegral (fst x))/ (fromIntegral (totalNumber)))^2)
+            | xs /= [] = (((fromIntegral (fst x)) / (fromIntegral (totalNumber)))^2) + (helper xs totalNumber)     
+            | otherwise = error "calculateGini - CRITICAL ERROR"        
+
+totalNumber (x:xs) 
+    | xs == [] = (fst x)
+    | xs /= [] = (fst x) + totalNumber xs
+    | otherwise = error "totalNumber - CRITICAL ERROR"
+
+-- listSizes ginies
+calculateWeightedGini (x:xs) (y:ys) allOccurences
+    | (not $ null xs) && (not $ null ys) = ((x / allOccurences)*y) + calculateWeightedGini xs ys allOccurences
+    | (null xs) && (null ys) = ((x / allOccurences)*y)
+    | (not $ null xs) && (null ys) = error "calculateWeightedgGini - ERROR, GINIES EMPTY"
+    | (null xs) && (not $ null ys) = error "calculateWeightedgGini - ERROR, LIST_SIZES EMPTY"
+    | otherwise = error "calculateWeightedgGini - CRITICAL ERROR"
 
 

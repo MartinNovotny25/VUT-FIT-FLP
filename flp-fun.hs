@@ -12,6 +12,9 @@ import Data.List.Split
 -- Datový typ strom
 -- Leaf v sebe obsahuje triedu
 -- Node v sebe obsahuje ID, treshold hodnotu a dvoch potomkov
+-- Struktura prebrana z Learn You a Haskell
+-- https://learnyouahaskell.github.io/making-our-own-types-and-typeclasses.html#recursive-data-structures
+
 data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Show, Eq)
 
 -- Main ----------------------------------------------------------------------
@@ -24,7 +27,96 @@ main = do
                                                     treeStr <- readFile treeInput   
                                                     dataStr <- readFile dataInput
                                                     doClass treeStr dataStr
+                 "-2" : [dataInput] -> do
+                                         dataStr <- readFile dataInput
+                                         print $ (map (splitOn (",")) $ lines dataStr) 
+                                         doTrain (map (splitOn (",")) $ lines dataStr)                                  
                  _ -> error "Argumenty coska nedobre"
+
+
+------ Vypocet GINI index ---------------------------------------
+-- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
+
+--doTrain dataInput = calculateAverages (getFloat dataInput)
+-- Tato cast vrati prvy list listov stringov ako list floatov
+doTrain dataInput = --print $ glueTogether dataInput
+    let maxIndex = (length (dataInput !! 0))
+        makePair x y = (x,y)
+        getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
+        in print $ (glueTogether getPairs)
+        --in print $ extractLabels getPairs
+
+
+
+parseColumns input index maxIndex  
+    | index /= (maxIndex - 1) = map (!! index) input : parseColumns input (index+1) maxIndex
+    | otherwise = (map (!! index) input) : []  
+
+readAsFloat = (read :: String -> Float) 
+
+incrementListOfTuples (x:xs) label  
+        | (snd x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
+        | (snd x) /= label = x : (incrementListOfTuples xs label)
+        | (snd x) == label && xs /= [] = ((fst x)+1, snd x) : xs
+        | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
+        | otherwise = error "incrementListOfTuples -- Critical error"
+    
+
+
+glueTogether inputList = 
+    let average = (calcAverage (read (fst (inputList !! 0)) :: Float) (read (fst (inputList !! 1))) :: Float)
+        splitList = splitByAvg average inputList
+        occurencesSmaller = callIncrement (extractLabels inputList) (map snd (fst splitList))
+        occurencesBigger =  callIncrement (extractLabels inputList) (map snd (snd splitList))
+        totalSmaller = totalNumber occurencesSmaller
+        totalBigger = totalNumber occurencesBigger
+        giniSmaller = calculateGini totalSmaller occurencesSmaller
+        giniBigger = calculateGini totalBigger occurencesBigger
+        allOccurences = totalBigger + totalSmaller
+        weightedGini = calculateWeightedGini [totalSmaller, totalBigger] [giniSmaller, giniBigger] allOccurences
+        --weightedGini = calculateWeightedGini [1, 6] [0, 0.5] 7
+        in (weightedGini) :: Float
+
+-- Iny postup - vypocitat priemer po jednom a tak pocitat gini index
+calcAverage x y = (x+y)/2
+splitByAvg threshold list = ([x | x <- list, (read (fst x) :: Float) <= threshold], [x | x <- list, (read (fst x) :: Float) > threshold])
+
+-- PRIKLAD VSTUPU
+-- callIncrement (extractLabels [["7","N"],["12","N"],["18","Y"],["35","Y"],["38","Y"],["50","N"],["83","N"]]) (map snd [(1, "N"), (2, "Y"), (3,"N")])
+-- extractLabels vytiahne unikatne páry (0, label), pricom fst sa bude inkrementovat vzdy, pokila bude rovnaky label v druhom zozname
+-- druhy zoznam su hodnoty, ktore boli splitnute podla tresholdu
+callIncrement toIncrement (y:[]) = incrementListOfTuples toIncrement y
+callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrement y) ys
+
+extractLabels lists = helper (map snd lists) []
+    where   helper [] _ = [] 
+            helper (x:xs) seen
+                | x `elem` seen = helper xs seen  
+                | otherwise = (0, x) : helper xs (x : seen)  
+
+calculateGini totalNumber list = 1 - (helper list totalNumber)
+    where helper (x:xs) totalNumber
+            | xs == [] = ((((fst x))/ ( (totalNumber)))^2)
+            | xs /= [] = ((( (fst x)) / ((totalNumber)))^2) + (helper xs totalNumber)     
+            | otherwise = error "calculateGini - CRITICAL ERROR"        
+
+totalNumber (x:xs) 
+    | xs == [] = (fst x)
+    | xs /= [] = (fst x) + totalNumber xs
+    | otherwise = error "totalNumber - CRITICAL ERROR"
+
+-- listSizes ginies
+calculateWeightedGini (x:xs) (y:ys) allOccurences
+    | (not $ null xs) && (not $ null ys) = ((x / allOccurences)*y) + calculateWeightedGini xs ys allOccurences
+    | (null xs) && (null ys) = ((x / allOccurences)*y)
+    | (not $ null xs) && (null ys) = error "calculateWeightedgGini - ERROR, GINIES EMPTY"
+    | (null xs) && (not $ null ys) = error "calculateWeightedgGini - ERROR, LIST_SIZES EMPTY"
+    | otherwise = error "calculateWeightedgGini - CRITICAL ERROR"
+
+
+
+
+
 
 ------  Klasifikácia ------------------------------------------
 
@@ -44,8 +136,7 @@ classification [] (Node a b left right) = error "Ended on a node"
 classification (x:xs) (Node a b left right) 
     | x <= b = classification xs left
     | otherwise = classification xs right
-classification (x:xs) (Leaf a) 
-    | xs == [] = a    
+classification x (Leaf a) = a    
 
 
 
