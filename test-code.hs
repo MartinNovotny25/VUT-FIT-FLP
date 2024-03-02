@@ -35,52 +35,95 @@ countSpaces (x:xs) = helper (x:xs) 0
                                 | x == ' ' = helper xs (count + 1)
                                 | otherwise = if (count == 0) then 0 else count / 2  
 
+-- 1. krok - musime vypocitat weighted gini index pre kazdy stlpec
+    -- 1. vypocitat priemery susednych prvkov - fcia calculateAverages vypocita priemery
+    --                                        - a vrati ich v poli 
+
+    -- AKTUALNE
+    -- 2. Pre kazdy jeden priemer urcit, kolko poloziek pojde dolava alebo doprava podla
+    -- hodnoty daneho stlpca v polozke
+
+
+    -- 3. Potom vypocitat Gini purity value podla toho, kolko labelov islo doprava a kolko dolava
+    -- Tzn. ak doprava isli 2 A, 3 B a 1 C - GINI pre leaf bude 
+    --                            1 - (2/6)^2 - (3/6)^2 - (1/6)^2
+    -- obdobne pre druhu vetvu
+    -- potom sa spocita weighted gini a podla toho sa vyberie podla ktoreho stlpca sa bude rozhodovat
+
 -- GINI
 -- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
 
-calculateAverages (x:y:[]) = ((x + y) / 2) : []
-calculateAverages (x:y:xs) = ((x + y) / 2) : calculateAverages (y:xs)
+--calculateAverages (x:y:[]) = ((x + y) / 2) : []
+--calculateAverages (x:y:xs) = ((x + y) / 2) : calculateAverages (y:xs)
 
--- Gini impurity = 1 - (pravdepodobnost triedy 1)^2 - (pravdepodobnost triedy n)^2
---calculateDispersion inputData threshold classes 
---    | 
 
--- ((x:xs), (x:ys)) je par zoznamov, pricom fst su ciselne hodnoty a snd su labely 
---          hodnoty na rovnakych indexoch tvoria par
--- listOfTuples je list tuplov, kde fst je label a snd je pocet hodnot, ktore boli
---      rozdelene do tychto labelov podla thresholdu
 
--- splitByAvg threshold ((x:xs), (y:ys)) listOfTuples =
---     let smaller = listOfTuples
---         bigger = listOfTuples
---     in  if (x <= threshold) 
---             then  splitByAvg (xs, ys) (incrementListOfTuples smaller y)
---             else  splitByAvg (xs, ys) (incrementListOfTuples bigger y)
+makePair value label = (value, label)
 
--- splitByAvg threshold ((x:[]), (y:[])) listOfTuples =   
---     let smaller = listOfTuples
---         bigger = listOfTuples
---     in  if (x <= threshold) 
---             then incrementListOfTuples smaller y
---             else incrementListOfTuples bigger y      
+
+-- Spocita, kolko hodnot labelov bolo mensich alebo vacsich ako treshold
+-- hodnoty uz su spocitane
+-- vstupom je uz vytvorene pole hodnot, ktore boli bud mensie alebo vacsie 
+-- a je ich treba iba spocitat
+
+
+--       value listOfTuples
+countLabels x (y:[])
+    | (snd x) == (snd y) = ((fst y) +1, snd y) : []
+    | otherwise =  []
+countLabels x (y:ys) 
+    | (snd x) == (snd y) = ((fst y) +1, snd y) : countLabels x ys
+    | otherwise =  countLabels x ys
+
+
+
+-- funkcia funguje tak, ze sa zo zoznamu roztriedenych prvkov vytahuju dvojice po jednom
+testFold (x:[]) list = (countLabels x list) : []
+testFold (x:xs) list = (countLabels x list) : testFold xs list     
 
 incrementListOfTuples (x:xs) label  
-        | (fst x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
-        | (fst x) /= label = x : (incrementListOfTuples xs label)
-        | (fst x) == label && xs /= [] = (fst x, (snd x) + 1) : xs
-        | (fst x) == label && xs == [] = (fst x, (snd x) + 1) : []
+        | (snd x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
+        | (snd x) /= label = x : (incrementListOfTuples xs label)
+        | (snd x) == label && xs /= [] = ((fst x)+1, snd x) : xs
+        | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
         | otherwise = error "incrementListOfTuples -- Critical error"
 
+-- TODO - ASI TO UPLNE ZMAZ A POUZI PROSTE FILTER
+-- Todo - Mozno bude stacit iba jedna funckia a potom s vysledkom pouzit filter na povodny zoznam
+ 
 getSmaller [] _ = error "getSmaller: empty list input"
 getSmaller (x:xs) threshold     
-    | x <= threshold && xs == [] = x : []
-    | x <= threshold = x : (getBigger xs threshold)
-    | x > threshold && xs == [] = []
-    | x > threshold = (getBigger xs threshold)
+    | (fst x) <= threshold && xs == [] = x : []
+    | (fst x) <= threshold = x : (getSmaller xs threshold)
+    | (fst x) > threshold && xs == [] = []
+    | (fst x) > threshold = (getSmaller xs threshold)
 
 getBigger [] _ = error "getBigger: empty list input"
 getBigger (x:xs) threshold 
-    | x > threshold && xs == [] = x : []
-    | x > threshold = x : (getBigger xs threshold)
-    | x <= threshold && xs == [] = []
-    | x <= threshold = (getBigger xs threshold)    
+    | (fst x) > threshold && xs == [] = x : []
+    | (fst x) > threshold = x : (getBigger xs threshold)
+    | (fst x) <= threshold && xs == [] = []
+    | (fst x) <= threshold = (getBigger xs threshold)    
+
+
+
+-- Iny postup - vypocitat priemer po jednom a tak pocitat gini index
+calcAverage x y = (x+y)/2
+--splitByAvg list xs = filter () 
+
+-- PRIKLAD VSTUPU
+-- callIncrement (extractLabels [["7","N"],["12","N"],["18","Y"],["35","Y"],["38","Y"],["50","N"],["83","N"]]) (map snd [(1, "N"), (2, "Y"), (3,"N")])
+-- extractLabels vytiahne unikatne páry (0, label), pricom fst sa bude inkrementovat vzdy, pokila bude rovnaky label v druhom zozname
+-- druhy zoznam su hodnoty, ktore boli splitnute podla tresholdu
+callIncrement toIncrement (y:[]) = incrementListOfTuples toIncrement y
+callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrement y) ys
+
+extractLabels :: [[String]] -> [(Int, String)]
+extractLabels lists = helper (map last lists) []
+    where 
+        helper [] _ = [] 
+        helper (x:xs) seen
+            | x `elem` seen = helper xs seen  
+            | otherwise = (0, x) : helper xs (x : seen)  
+
+
