@@ -43,7 +43,7 @@ doTrain dataInput = --print $ glueTogether dataInput
     let maxIndex = (length (dataInput !! 0))
         makePair x y = (x,y)
         getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
-        in print $ (glueTogether getPairs)
+        in print $ (calcAllWeights getPairs)
         --in print $ extractLabels getPairs
 
 
@@ -61,10 +61,14 @@ incrementListOfTuples (x:xs) label
         | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
         | otherwise = error "incrementListOfTuples -- Critical error"
     
+calcAllWeights inputList = iterateOver inputList ((length inputList) -1)
+                    where iterateOver inputList iterations
+                                | iterations /= 1 = (glueTogether inputList iterations) : (iterateOver inputList (iterations-1) )
+                                | iterations == 1 = (glueTogether inputList iterations) : []
 
 
-glueTogether inputList = 
-    let average = (calcAverage (read (fst (inputList !! 0)) :: Float) (read (fst (inputList !! 1))) :: Float)
+glueTogether inputList index = 
+    let average = (calcAverage (read (fst (inputList !! index)) :: Float) (read (fst (inputList !! (index -1)))) :: Float)
         splitList = splitByAvg average inputList
         occurencesSmaller = callIncrement (extractLabels inputList) (map snd (fst splitList))
         occurencesBigger =  callIncrement (extractLabels inputList) (map snd (snd splitList))
@@ -74,7 +78,6 @@ glueTogether inputList =
         giniBigger = calculateGini totalBigger occurencesBigger
         allOccurences = totalBigger + totalSmaller
         weightedGini = calculateWeightedGini [totalSmaller, totalBigger] [giniSmaller, giniBigger] allOccurences
-        --weightedGini = calculateWeightedGini [1, 6] [0, 0.5] 7
         in (weightedGini) :: Float
 
 -- Iny postup - vypocitat priemer po jednom a tak pocitat gini index
