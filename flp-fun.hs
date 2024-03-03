@@ -16,7 +16,19 @@ import Data.Maybe
 -- Struktura prebrana z Learn You a Haskell
 -- https://learnyouahaskell.github.io/making-our-own-types-and-typeclasses.html#recursive-data-structures
 
-data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Show, Eq)
+data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Eq)
+
+instance Show Tree where
+    show tree = showIndented 0 tree
+      where
+        showIndented :: Int -> Tree -> String
+        showIndented depth (Leaf str) = replicate (depth * 2) ' ' ++ "Leaf: " ++ str
+        showIndented depth (Node intVal floatVal left right) =
+            replicate (depth * 2) ' ' ++
+            "Node: " ++ show intVal ++ ", " ++ show floatVal ++ "\n" ++
+            showIndented (depth + 1) left ++ "\n" ++
+            showIndented (depth + 1) right
+
 
 -- Main ----------------------------------------------------------------------
 
@@ -30,7 +42,7 @@ main = do
                                                     doClass treeStr dataStr
                  "-2" : [dataInput] -> do
                                          dataStr <- readFile dataInput
-                                         print $ (map (splitOn (",")) $ lines dataStr) 
+                                         --print $ (map (splitOn (",")) $ lines dataStr) 
                                          print $ doTrain (map (splitOn (",")) $ lines dataStr)                                  
                  _ -> error "Argumenty coska nedobre"
 
@@ -38,52 +50,66 @@ main = do
 ------ Vypocet GINI index ---------------------------------------
 -- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
 
---doTrain dataInput = calculateAverages (getFloat dataInput)
+-- doTrain dataInput = calculateAverages (getFloat dataInput)
 -- Tato cast vrati prvy list listov stringov ako list floatov
 doTrain dataInput  
      | (containsSameLabels dataInput) == True = Leaf (last (head dataInput))
      | otherwise =
             let maxIndex = (length (dataInput !! 0))
-            --in print $ (calcAllWeights getPairs)
-            --in print $ extractLabels (head (getPairs 0 maxIndex dataInput))
-            --in print $ calcAllWeights (head (getPairs 0 maxIndex dataInput))
-            --in print $ calcAllWeights [(head (concat (getPairs 0 maxIndex dataInput)))]
-            --in print $ ( makePairsFromPairs (getPairs 0 maxIndex dataInput))
 
             -- Táto vec vráti najlepšie gini indexy jednotlivych parov
             -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
             -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
-
-                allGinis = (map calcAllWeights (map makePairsFromPairs (getPairs 0 maxIndex dataInput)))
+                allGinis = (map reverse (map calcAllWeights $ (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))))
                 bestGinis = map minimum allGinis
                 indexOfBestGinis = catMaybes $ zipWith elemIndex bestGinis allGinis
 
                 -- Vrati index najlepsieho priemeru -> vypocitam znova priemer a podla neho rozdelim vstup
-                --bestAverage = 
                 returnBestIndex =  (minimum $ zipWith makePair bestGinis indexOfBestGinis)
                 -- Potrebujem vratit aj index stolpca, aby som vedel podla ktoreho splitovat
                 indexOfColumn = head $ catMaybes $ [elemIndex (returnBestIndex) (zipWith makePair bestGinis indexOfBestGinis)]
 
-                val1 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! (snd returnBestIndex)) 
-                val2 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
-
-                -- Toto vrati index stplca podla ktoreho splitovat a index priemeru podla ktoreho splitovat - priemer vypocitame ako index a index +1
-                --in print $ (indexOfColumn, snd(returnBestIndex))
+                val1 = ((((map makeString) $ (map (sortOn fst)) $ (map makeFloat) $(map makePairsFromPairs (getPairs 0 maxIndex dataInput))) !! indexOfColumn) !! (snd returnBestIndex)) 
+                val2 = ((((map makeString) $ (map (sortOn fst)) $ (map makeFloat) $(map makePairsFromPairs (getPairs 0 maxIndex dataInput))) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
 
                 -- Toto vrati priemer podla kotreho budeme splitovat
                 returnAverage = calcAverage (read (fst val1) :: Float) (read (fst val2) :: Float)
 
                 -- Split list vrati 
                 splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
-                --in print $ (Node indexOfColumn returnAverage (doTrain $ fst splitList) (doTrain $ snd splitList))
                 in (Node indexOfColumn returnAverage) (doTrain (fst splitList)) (doTrain (snd splitList))
 
 
-            -- makePair x y = (x,y)
-            -- getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
-            -- --in print $ (calcAllWeights getPairs)
-            --in print $ getPairs 
+-- doTrain dataInput = 
+--             let maxIndex = (length (dataInput !! 0))
 
+--             -- Táto vec vráti najlepšie gini indexy jednotlivych parov
+--             -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
+--             -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
+
+--                 allGinis = map reverse (map calcAllWeights $ (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput)))
+--                -- allGinis =  calculateGini [(1, "B"), (1, "C")] 2 
+--                 test =  (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))
+--                 bestGinis = map minimum allGinis
+--                 indexOfBestGinis = catMaybes $ zipWith elemIndex bestGinis allGinis
+
+--                 -- Vrati index najlepsieho priemeru -> vypocitam znova priemer a podla neho rozdelim vstup
+--                 returnBestIndex =  (minimum $ zipWith makePair bestGinis indexOfBestGinis)
+--                 -- Potrebujem vratit aj index stolpca, aby som vedel podla ktoreho splitovat
+--                 indexOfColumn = head $ catMaybes $ [elemIndex (returnBestIndex) (zipWith makePair bestGinis indexOfBestGinis)]
+
+--                 val1 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! (snd returnBestIndex)) 
+--                 val2 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
+
+--                 -- Toto vrati priemer podla kotreho budeme splitovat
+--                 returnAverage = calcAverage (read (fst val1) :: Float) (read (fst val2) :: Float)
+
+--                 -- Split list vrati 
+--                 splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
+--                 in test
+
+makeFloat list = [((read (fst x) :: Float), snd x)| x <- list] 
+makeString list = [((show (fst x)), snd x)| x <- list] 
 
 getPairs currentIndex maxIndex dataInput  
     | currentIndex == (maxIndex-1) = []
@@ -134,6 +160,7 @@ splitByAvg threshold list = ([x | x <- list, (read (fst x) :: Float) <= threshol
 -- callIncrement (extractLabels [["7","N"],["12","N"],["18","Y"],["35","Y"],["38","Y"],["50","N"],["83","N"]]) (map snd [(1, "N"), (2, "Y"), (3,"N")])
 -- extractLabels vytiahne unikatne páry (0, label), pricom fst sa bude inkrementovat vzdy, pokila bude rovnaky label v druhom zozname
 -- druhy zoznam su hodnoty, ktore boli splitnute podla tresholdu
+callIncrement toIncrement [] = []
 callIncrement toIncrement (y:[]) = incrementListOfTuples toIncrement y
 callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrement y) ys
 
@@ -153,7 +180,7 @@ extractLabels lists = helper (map snd lists) []
 calculateGini totalNumber list = 1 - (helper list totalNumber)
     where helper (x:xs) totalNumber
             | xs == [] = ((((fst x))/ ( (totalNumber)))^2)
-            | xs /= [] = ((( (fst x)) / ((totalNumber)))^2) + (helper xs totalNumber)     
+            | xs /= [] = ((((fst x)) / ((totalNumber)))^2) + (helper xs totalNumber)     
             | otherwise = error "calculateGini - CRITICAL ERROR"        
 
 totalNumber (x:xs) 
@@ -163,7 +190,7 @@ totalNumber (x:xs)
 
 -- listSizes ginies
 calculateWeightedGini (x:xs) (y:ys) allOccurences
-    | (not $ null xs) && (not $ null ys) = ((x / allOccurences)*y) + calculateWeightedGini xs ys allOccurences
+    | (not $ null xs) && (not $ null ys) = ((x / allOccurences)*y) + (calculateWeightedGini xs ys allOccurences)
     | (null xs) && (null ys) = ((x / allOccurences)*y)
     | (not $ null xs) && (null ys) = error "calculateWeightedgGini - ERROR, GINIES EMPTY"
     | (null xs) && (not $ null ys) = error "calculateWeightedgGini - ERROR, LIST_SIZES EMPTY"

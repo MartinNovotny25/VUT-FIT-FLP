@@ -61,8 +61,6 @@ incrementListOfTuples (x:xs) label
         | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
         | otherwise = error "incrementListOfTuples -- Critical error"
 
-
-
 -- Iny postup - vypocitat priemer po jednom a tak pocitat gini index
 calcAverage x y = (x+y)/2
 --splitByAvg list xs = filter () 
@@ -71,6 +69,7 @@ calcAverage x y = (x+y)/2
 -- callIncrement (extractLabels [["7","N"],["12","N"],["18","Y"],["35","Y"],["38","Y"],["50","N"],["83","N"]]) (map snd [(1, "N"), (2, "Y"), (3,"N")])
 -- extractLabels vytiahne unikatne páry (0, label), pricom fst sa bude inkrementovat vzdy, pokila bude rovnaky label v druhom zozname
 -- druhy zoznam su hodnoty, ktore boli splitnute podla tresholdu
+callIncrement toIncrement [] = error "?????"
 callIncrement toIncrement (y:[]) = incrementListOfTuples toIncrement y
 callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrement y) ys
 
