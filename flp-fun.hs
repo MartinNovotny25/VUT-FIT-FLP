@@ -42,14 +42,30 @@ main = do
 doTrain dataInput = --print $ glueTogether dataInput
     let maxIndex = (length (dataInput !! 0))
         --in print $ (calcAllWeights getPairs)
-        --in print $ extractLabels getPairs
-        in print $ getPairs 0 maxIndex dataInput
+        --in print $ extractLabels (head (getPairs 0 maxIndex dataInput))
+        --in print $ calcAllWeights (head (getPairs 0 maxIndex dataInput))
+        --in print $ calcAllWeights [(head (concat (getPairs 0 maxIndex dataInput)))]
+        --in print $ ( makePairsFromPairs (getPairs 0 maxIndex dataInput))\
+
+        -- Táto vec vráti najlepšie gini indexy jednotlivych parov
+        -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
+        -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
+        in print $ map minimum (map calcAllWeights (map makePairsFromPairs (getPairs 0 maxIndex dataInput)))
+
+        -- makePair x y = (x,y)
+        -- getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
+        -- --in print $ (calcAllWeights getPairs)
+        --in print $ getPairs 
 
 
 getPairs currentIndex maxIndex dataInput  
     | currentIndex == (maxIndex-1) = []
-    | currentIndex /= (maxIndex-1) = (zipWith makePair ((parseColumns dataInput currentIndex maxIndex)) ((parseColumns dataInput (maxIndex-1) maxIndex))) : (getPairs (currentIndex + 1) maxIndex dataInput)
-                        where makePair x y = (x,y)
+    | currentIndex /= (maxIndex-1) = (zipWith makePair ((parseColumns dataInput currentIndex maxIndex)) ((parseColumns dataInput (maxIndex-1) maxIndex))) ++ (getPairs (currentIndex + 1) maxIndex dataInput)
+                        
+makePairsFromPairs ([], []) = []
+makePairsFromPairs (x:xs, y:ys) = (makePair x y) : makePairsFromPairs (xs, ys)
+
+makePair x y = (x,y)
 
 parseColumns input index maxIndex  
     | index /= (maxIndex - 1) = map (!! index) input : parseColumns input (index+1) maxIndex
