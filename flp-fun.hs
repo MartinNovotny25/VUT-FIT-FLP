@@ -8,6 +8,7 @@ import System.Environment (getArgs)
 import System.IO (readFile)
 import Data.List 
 import Data.List.Split
+import Data.Maybe
 
 -- Datový typ strom
 -- Leaf v sebe obsahuje triedu
@@ -30,7 +31,7 @@ main = do
                  "-2" : [dataInput] -> do
                                          dataStr <- readFile dataInput
                                          print $ (map (splitOn (",")) $ lines dataStr) 
-                                         doTrain (map (splitOn (",")) $ lines dataStr)                                  
+                                         print $ doTrain (map (splitOn (",")) $ lines dataStr)                                  
                  _ -> error "Argumenty coska nedobre"
 
 
@@ -39,23 +40,49 @@ main = do
 
 --doTrain dataInput = calculateAverages (getFloat dataInput)
 -- Tato cast vrati prvy list listov stringov ako list floatov
-doTrain dataInput = --print $ glueTogether dataInput
-    let maxIndex = (length (dataInput !! 0))
-        --in print $ (calcAllWeights getPairs)
-        --in print $ extractLabels (head (getPairs 0 maxIndex dataInput))
-        --in print $ calcAllWeights (head (getPairs 0 maxIndex dataInput))
-        --in print $ calcAllWeights [(head (concat (getPairs 0 maxIndex dataInput)))]
-        --in print $ ( makePairsFromPairs (getPairs 0 maxIndex dataInput))\
+doTrain dataInput  
+     | (containsSameLabels dataInput) == True = Leaf (last (head dataInput))
+     | otherwise =
+            let maxIndex = (length (dataInput !! 0))
+            --in print $ (calcAllWeights getPairs)
+            --in print $ extractLabels (head (getPairs 0 maxIndex dataInput))
+            --in print $ calcAllWeights (head (getPairs 0 maxIndex dataInput))
+            --in print $ calcAllWeights [(head (concat (getPairs 0 maxIndex dataInput)))]
+            --in print $ ( makePairsFromPairs (getPairs 0 maxIndex dataInput))
 
-        -- Táto vec vráti najlepšie gini indexy jednotlivych parov
-        -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
-        -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
-        in print $ map minimum (map calcAllWeights (map makePairsFromPairs (getPairs 0 maxIndex dataInput)))
+            -- Táto vec vráti najlepšie gini indexy jednotlivych parov
+            -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
+            -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
 
-        -- makePair x y = (x,y)
-        -- getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
-        -- --in print $ (calcAllWeights getPairs)
-        --in print $ getPairs 
+                allGinis = (map calcAllWeights (map makePairsFromPairs (getPairs 0 maxIndex dataInput)))
+                bestGinis = map minimum allGinis
+                indexOfBestGinis = catMaybes $ zipWith elemIndex bestGinis allGinis
+
+                -- Vrati index najlepsieho priemeru -> vypocitam znova priemer a podla neho rozdelim vstup
+                --bestAverage = 
+                returnBestIndex =  (minimum $ zipWith makePair bestGinis indexOfBestGinis)
+                -- Potrebujem vratit aj index stolpca, aby som vedel podla ktoreho splitovat
+                indexOfColumn = head $ catMaybes $ [elemIndex (returnBestIndex) (zipWith makePair bestGinis indexOfBestGinis)]
+
+                val1 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! (snd returnBestIndex)) 
+                val2 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
+
+                -- Toto vrati index stplca podla ktoreho splitovat a index priemeru podla ktoreho splitovat - priemer vypocitame ako index a index +1
+                --in print $ (indexOfColumn, snd(returnBestIndex))
+
+                -- Toto vrati priemer podla kotreho budeme splitovat
+                returnAverage = calcAverage (read (fst val1) :: Float) (read (fst val2) :: Float)
+
+                -- Split list vrati 
+                splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
+                --in print $ (Node indexOfColumn returnAverage (doTrain $ fst splitList) (doTrain $ snd splitList))
+                in (Node indexOfColumn returnAverage) (doTrain (fst splitList)) (doTrain (snd splitList))
+
+
+            -- makePair x y = (x,y)
+            -- getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
+            -- --in print $ (calcAllWeights getPairs)
+            --in print $ getPairs 
 
 
 getPairs currentIndex maxIndex dataInput  
@@ -109,6 +136,13 @@ splitByAvg threshold list = ([x | x <- list, (read (fst x) :: Float) <= threshol
 -- druhy zoznam su hodnoty, ktore boli splitnute podla tresholdu
 callIncrement toIncrement (y:[]) = incrementListOfTuples toIncrement y
 callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrement y) ys
+
+containsSameLabels list = helper1 list (last (head list)) 
+    where   helper1 [] _ = True
+            helper1 (x:xs) compareVal 
+                | (last x) /= compareVal = False
+                | (last x) == compareVal = helper1 xs compareVal
+
 
 extractLabels lists = helper (map snd lists) []
     where   helper [] _ = [] 
