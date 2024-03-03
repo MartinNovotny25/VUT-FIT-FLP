@@ -41,12 +41,15 @@ main = do
 -- Tato cast vrati prvy list listov stringov ako list floatov
 doTrain dataInput = --print $ glueTogether dataInput
     let maxIndex = (length (dataInput !! 0))
-        makePair x y = (x,y)
-        getPairs = zipWith makePair (head (parseColumns dataInput 0 maxIndex)) (concat $ tail (parseColumns dataInput 0 maxIndex))
-        in print $ (calcAllWeights getPairs)
+        --in print $ (calcAllWeights getPairs)
         --in print $ extractLabels getPairs
+        in print $ getPairs 0 maxIndex dataInput
 
 
+getPairs currentIndex maxIndex dataInput  
+    | currentIndex == (maxIndex-1) = []
+    | currentIndex /= (maxIndex-1) = (zipWith makePair ((parseColumns dataInput currentIndex maxIndex)) ((parseColumns dataInput (maxIndex-1) maxIndex))) : (getPairs (currentIndex + 1) maxIndex dataInput)
+                        where makePair x y = (x,y)
 
 parseColumns input index maxIndex  
     | index /= (maxIndex - 1) = map (!! index) input : parseColumns input (index+1) maxIndex
