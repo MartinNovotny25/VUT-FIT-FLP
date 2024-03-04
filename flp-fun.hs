@@ -12,12 +12,14 @@ import Data.Maybe
 
 -- Datový typ strom
 -- Leaf v sebe obsahuje triedu
--- Node v sebe obsahuje ID, treshold hodnotu a dvoch potomkov
+-- Node v sebe obsahuje index priznaku, treshold hodnotu a dvoch potomkov
 -- Struktura prebrana z Learn You a Haskell
 -- https://learnyouahaskell.github.io/making-our-own-types-and-typeclasses.html#recursive-data-structures
 
 data Tree = Leaf String | Node Int Float (Tree) (Tree) deriving (Eq)
 
+
+-- Inštancia pre výpis stromu
 instance Show Tree where
     show tree = showIndented 0 tree
       where
@@ -33,7 +35,6 @@ instance Show Tree where
 -- Main ----------------------------------------------------------------------
 
 main = do 
-
     args <- getArgs
     case args of [] -> error "Empty"
                  "-1" : treeInput : [dataInput] -> do 
@@ -42,41 +43,50 @@ main = do
                                                     doClass treeStr dataStr
                  "-2" : [dataInput] -> do
                                          dataStr <- readFile dataInput
-                                         --print $ (map (splitOn (",")) $ lines dataStr) 
-                                         print $ doTrain (map (splitOn (",")) $ lines dataStr)                                  
+                                         -- Vstup rozdelime podla stplcov, odstranime prazdne riadky
+                                         --print $ (filter (/= [""])) (map (splitOn (",")) $ lines dataStr) 
+                                         print $ doTrain $ (filter (/= [""])) (map (splitOn (",")) $ lines dataStr)                                
                  _ -> error "Argumenty coska nedobre"
 
 
 ------ Vypocet GINI index ---------------------------------------
 -- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
 
--- doTrain dataInput = calculateAverages (getFloat dataInput)
--- Tato cast vrati prvy list listov stringov ako list floatov
+-- Tvorba uzlov a listov
+-- Ak na vstup príde zoznam, ktorý obsahuje rovnaké triedy, môžeme vytvoriť list
+-- Ak nie, vytvoríme Node a splitujeme ďalej
 doTrain dataInput  
      | (containsSameLabels dataInput) == True = Leaf (last (head dataInput))
      | otherwise =
+                -- maxIndex je počet stĺpcov
             let maxIndex = (length (dataInput !! 0))
 
-            -- Táto vec vráti najlepšie gini indexy jednotlivych parov
-            -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
-            -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
+                -- Zo vstupného listu extrahujeme páry (priznak, trieda) a z nich vytvoríme zoznamy. Tieto zoznamy zoradíme od najmenšieho po najväčšie.
+                -- mapCalcAllWeights vypočíta vážené indexy pre každý deliaci threshold, map reverse otočí zoznam, pretože calcAllWeights ich počíta odzadu
                 allGinis = (map reverse (map calcAllWeights $ (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))))
+
+                -- Vyberieme najnižšie Gini impurities
                 bestGinis = map minimum allGinis
+                -- Vyberieme indexy najlepších gini impurities
                 indexOfBestGinis = catMaybes $ zipWith elemIndex bestGinis allGinis
 
                 -- Vrati index najlepsieho priemeru -> vypocitam znova priemer a podla neho rozdelim vstup
                 returnBestIndex =  (minimum $ zipWith makePair bestGinis indexOfBestGinis)
-                -- Potrebujem vratit aj index stolpca, aby som vedel podla ktoreho splitovat
+                -- Potrebujem vratit aj index stlpca, aby som vedel podla ktoreho splitovat
                 indexOfColumn = head $ catMaybes $ [elemIndex (returnBestIndex) (zipWith makePair bestGinis indexOfBestGinis)]
 
+                -- Podľa indexu najlepšieho gini impurity indexu vieme zistiť, z ktorých 2 susedných hodnôt bol vypočítaný daný priemer. Tieto 2 hodnoty vyberieme a vypočítame 
+                -- priemer znova
                 val1 = ((((map makeString) $ (map (sortOn fst)) $ (map makeFloat) $(map makePairsFromPairs (getPairs 0 maxIndex dataInput))) !! indexOfColumn) !! (snd returnBestIndex)) 
                 val2 = ((((map makeString) $ (map (sortOn fst)) $ (map makeFloat) $(map makePairsFromPairs (getPairs 0 maxIndex dataInput))) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
 
-                -- Toto vrati priemer podla kotreho budeme splitovat
+                -- Vrati priemer podla kotreho budeme splitovat
                 returnAverage = calcAverage (read (fst val1) :: Float) (read (fst val2) :: Float)
 
-                -- Split list vrati 
+                -- Split list vrati 2 zoznami - menšie a väčšie ako threshold
                 splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
+
+                -- Vytvoríme uzol a rekurzivne volame doTrain na dcérskych uzloch s dielčimi zoznamami
                 in (Node indexOfColumn returnAverage) (doTrain (fst splitList)) (doTrain (snd splitList))
 
 
@@ -108,37 +118,8 @@ doTrain dataInput
 --                 splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
 --                 in test
 
-makeFloat list = [((read (fst x) :: Float), snd x)| x <- list] 
-makeString list = [((show (fst x)), snd x)| x <- list] 
 
-getPairs currentIndex maxIndex dataInput  
-    | currentIndex == (maxIndex-1) = []
-    | currentIndex /= (maxIndex-1) = (zipWith makePair ((parseColumns dataInput currentIndex maxIndex)) ((parseColumns dataInput (maxIndex-1) maxIndex))) ++ (getPairs (currentIndex + 1) maxIndex dataInput)
-                        
-makePairsFromPairs ([], []) = []
-makePairsFromPairs (x:xs, y:ys) = (makePair x y) : makePairsFromPairs (xs, ys)
-
-makePair x y = (x,y)
-
-parseColumns input index maxIndex  
-    | index /= (maxIndex - 1) = map (!! index) input : parseColumns input (index+1) maxIndex
-    | otherwise = (map (!! index) input) : []  
-
-readAsFloat = (read :: String -> Float) 
-
-incrementListOfTuples (x:xs) label  
-        | (snd x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
-        | (snd x) /= label = x : (incrementListOfTuples xs label)
-        | (snd x) == label && xs /= [] = ((fst x)+1, snd x) : xs
-        | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
-        | otherwise = error "incrementListOfTuples -- Critical error"
-    
-calcAllWeights inputList = iterateOver inputList ((length inputList) -1)
-                    where iterateOver inputList iterations
-                                | iterations /= 1 = (glueTogether inputList iterations) : (iterateOver inputList (iterations-1) )
-                                | iterations == 1 = (glueTogether inputList iterations) : []
-
-
+-- Výpočet jedného váženého Gini indexu
 glueTogether inputList index = 
     let average = (calcAverage (read (fst (inputList !! index)) :: Float) (read (fst (inputList !! (index -1)))) :: Float)
         splitList = splitByAvg average inputList
@@ -152,6 +133,69 @@ glueTogether inputList index =
         weightedGini = calculateWeightedGini [totalSmaller, totalBigger] [giniSmaller, giniBigger] allOccurences
         in (weightedGini) :: Float
 
+-- Vráti celkový počet všetkých tried
+totalNumber (x:xs) 
+    | xs == [] = (fst x)
+    | xs /= [] = (fst x) + totalNumber xs
+    | otherwise = error "totalNumber - CRITICAL ERROR"
+
+-- Výpočet Gini impurity je list
+calculateGini totalNumber list = 1 - (helper list totalNumber)
+    where helper (x:xs) totalNumber
+            | xs == [] = ((((fst x))/ ( (totalNumber)))^2)
+            | xs /= [] = ((((fst x)) / ((totalNumber)))^2) + (helper xs totalNumber)     
+            | otherwise = error "calculateGini - CRITICAL ERROR"     
+
+-- listSizes ginies
+calculateWeightedGini (x:xs) (y:ys) allOccurences
+    | (not $ null xs) && (not $ null ys) = ((x / allOccurences)*y) + (calculateWeightedGini xs ys allOccurences)
+    | (null xs) && (null ys) = ((x / allOccurences)*y)
+    | (not $ null xs) && (null ys) = error "calculateWeightedgGini - ERROR, GINIES EMPTY"
+    | (null xs) && (not $ null ys) = error "calculateWeightedgGini - ERROR, LIST_SIZES EMPTY"
+    | otherwise = error "calculateWeightedgGini - CRITICAL ERROR"
+
+-- Funkcie pre prevod (fst tuple) na Float a String
+makeFloat list = [((read (fst x) :: Float), snd x)| x <- list] 
+makeString list = [((show (fst x)), snd x)| x <- list] 
+
+-- Vytvorenie párov (príznak, trieda)
+getPairs currentIndex maxIndex dataInput  
+    | currentIndex == (maxIndex-1) = []
+    | currentIndex /= (maxIndex-1) =
+        let parsedColumn1 = ((parseColumns dataInput currentIndex maxIndex)) 
+            parsedColumn2 = ((parseColumns dataInput (maxIndex-1) maxIndex))
+        in 
+            (zipWith makePair parsedColumn1 parsedColumn2) ++ (getPairs (currentIndex + 1) maxIndex dataInput)
+
+-- Vytvorenie párov 2 listov                        
+makePairsFromPairs ([], []) = []
+makePairsFromPairs (x:xs, y:ys) = (makePair x y) : makePairsFromPairs (xs, ys)
+
+makePair x y = (x,y)
+
+
+-- Parsovanie stĺpca 
+parseColumns input index maxIndex  
+    | index /= (maxIndex - 1) = map (!! index) input : parseColumns input (index+1) maxIndex
+    | otherwise = (map (!! index) input) : []  
+
+-- Prevod zo Stringu na Float
+readAsFloat = (read :: String -> Float) 
+
+-- Funkcia dostane list počtu labelov v liste a zvýši počítadlo o 1 ak sa label nachádza v liste
+incrementListOfTuples (x:xs) label  
+        | (snd x) /= label && xs == [] = error "incrementListOfTuples -- label not found"
+        | (snd x) /= label = x : (incrementListOfTuples xs label)
+        | (snd x) == label && xs /= [] = ((fst x)+1, snd x) : xs
+        | (snd x) == label && xs == [] = ((fst x)+1, snd x) : []
+        | otherwise = error "incrementListOfTuples -- Critical error"
+
+-- Výpočet všetkých vážených Gini impurities pre splitnute Nodes    
+calcAllWeights inputList = iterateOver inputList ((length inputList) -1)
+                    where iterateOver inputList iterations
+                                | iterations /= 1 = (glueTogether inputList iterations) : (iterateOver inputList (iterations-1) )
+                                | iterations == 1 = (glueTogether inputList iterations) : []
+
 -- Iny postup - vypocitat priemer po jednom a tak pocitat gini index
 calcAverage x y = (x+y)/2
 splitByAvg threshold list = ([x | x <- list, (read (fst x) :: Float) <= threshold], [x | x <- list, (read (fst x) :: Float) > threshold])
@@ -164,39 +208,19 @@ callIncrement toIncrement [] = []
 callIncrement toIncrement (y:[]) = incrementListOfTuples toIncrement y
 callIncrement toIncrement (y:ys) = callIncrement (incrementListOfTuples toIncrement y) ys
 
+-- True ak sa v zozname nachádzajú iba rovnaké triedy, False inak
 containsSameLabels list = helper1 list (last (head list)) 
     where   helper1 [] _ = True
             helper1 (x:xs) compareVal 
                 | (last x) /= compareVal = False
                 | (last x) == compareVal = helper1 xs compareVal
 
-
+-- Extrahuje triedy z listu
 extractLabels lists = helper (map snd lists) []
     where   helper [] _ = [] 
             helper (x:xs) seen
                 | x `elem` seen = helper xs seen  
-                | otherwise = (0, x) : helper xs (x : seen)  
-
-calculateGini totalNumber list = 1 - (helper list totalNumber)
-    where helper (x:xs) totalNumber
-            | xs == [] = ((((fst x))/ ( (totalNumber)))^2)
-            | xs /= [] = ((((fst x)) / ((totalNumber)))^2) + (helper xs totalNumber)     
-            | otherwise = error "calculateGini - CRITICAL ERROR"        
-
-totalNumber (x:xs) 
-    | xs == [] = (fst x)
-    | xs /= [] = (fst x) + totalNumber xs
-    | otherwise = error "totalNumber - CRITICAL ERROR"
-
--- listSizes ginies
-calculateWeightedGini (x:xs) (y:ys) allOccurences
-    | (not $ null xs) && (not $ null ys) = ((x / allOccurences)*y) + (calculateWeightedGini xs ys allOccurences)
-    | (null xs) && (null ys) = ((x / allOccurences)*y)
-    | (not $ null xs) && (null ys) = error "calculateWeightedgGini - ERROR, GINIES EMPTY"
-    | (null xs) && (not $ null ys) = error "calculateWeightedgGini - ERROR, LIST_SIZES EMPTY"
-    | otherwise = error "calculateWeightedgGini - CRITICAL ERROR"
-
-
+                | otherwise = (0, x) : helper xs (x : seen)     
 
 
 
