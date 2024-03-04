@@ -89,36 +89,6 @@ doTrain dataInput
                 -- Vytvoríme uzol a rekurzivne volame doTrain na dcérskych uzloch s dielčimi zoznamami
                 in (Node indexOfColumn returnAverage) (doTrain (fst splitList)) (doTrain (snd splitList))
 
-
--- doTrain dataInput = 
---             let maxIndex = (length (dataInput !! 0))
-
---             -- Táto vec vráti najlepšie gini indexy jednotlivych parov
---             -- Ak si vrátim index najlepšieho gini, viem zistiť z čoho to bolo vypočitane a vratit ten priemer, ktory pojde do Nodu
---             -- Podla tejto hranice rozdelim moj vstupny list a pustim to cele odznova
-
---                 allGinis = map reverse (map calcAllWeights $ (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput)))
---                -- allGinis =  calculateGini [(1, "B"), (1, "C")] 2 
---                 test =  (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))
---                 bestGinis = map minimum allGinis
---                 indexOfBestGinis = catMaybes $ zipWith elemIndex bestGinis allGinis
-
---                 -- Vrati index najlepsieho priemeru -> vypocitam znova priemer a podla neho rozdelim vstup
---                 returnBestIndex =  (minimum $ zipWith makePair bestGinis indexOfBestGinis)
---                 -- Potrebujem vratit aj index stolpca, aby som vedel podla ktoreho splitovat
---                 indexOfColumn = head $ catMaybes $ [elemIndex (returnBestIndex) (zipWith makePair bestGinis indexOfBestGinis)]
-
---                 val1 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! (snd returnBestIndex)) 
---                 val2 = (((map makePairsFromPairs (getPairs 0 maxIndex dataInput)) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
-
---                 -- Toto vrati priemer podla kotreho budeme splitovat
---                 returnAverage = calcAverage (read (fst val1) :: Float) (read (fst val2) :: Float)
-
---                 -- Split list vrati 
---                 splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
---                 in test
-
-
 -- Výpočet jedného váženého Gini indexu
 glueTogether :: Eq b => [(String, b)] -> Int -> Float
 glueTogether inputList index = 
