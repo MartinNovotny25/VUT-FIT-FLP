@@ -8,6 +8,8 @@ import System.Environment
 import Data.List 
 import Data.List.Split
 import Data.Maybe
+import Data.Ord (comparing)
+
 
 -- Datový typ strom
 -- Leaf v sebe obsahuje triedu
@@ -42,10 +44,8 @@ main = do
                  "-2" : [dataInput] -> do
                                          dataStr <- readFile dataInput
                                          -- Vstup rozdelime podla stplcov, odstranime prazdne riadky
-                                         --print $ (filter (/= [""])) (map (splitOn (",")) $ lines dataStr) 
-                                         print $ doTrain $ (filter (/= [""])) (map (splitOn (",")) $ lines dataStr)                                
-                 _ -> error "Argumenty coska nedobre"
-
+                                         print $ doTrain $ (filter (/= [""])) (map (splitOn (",")) $ lines dataStr)                                 
+                 _ -> error "Arguments not correct"
 
 ------ Vypocet GINI index ---------------------------------------
 -- prebrané z https://www.youtube.com/watch?v=_L39rN6gz7Y
@@ -59,10 +59,11 @@ doTrain dataInput
      | otherwise =
                 -- maxIndex je počet stĺpcov
             let maxIndex = (length (dataInput !! 0))
-
+                cleanInput = map (map (removeItem '\r')) dataInput
+                sortedPairs = map sortLists (getPairs 0 maxIndex cleanInput)
                 -- Zo vstupného listu extrahujeme páry (priznak, trieda) a z nich vytvoríme zoznamy. Tieto zoznamy zoradíme od najmenšieho po najväčšie.
                 -- mapCalcAllWeights vypočíta vážené indexy pre každý deliaci threshold, map reverse otočí zoznam, pretože calcAllWeights ich počíta odzadu
-                allGinis = (map reverse (map calcAllWeights $ (map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))))
+                allGinis = map reverse (map calcAllWeights $ (map makePairsFromPairs sortedPairs))
 
                 -- Vyberieme najnižšie Gini impurities
                 bestGinis = map minimum allGinis
@@ -77,17 +78,18 @@ doTrain dataInput
                 
                 -- Podľa indexu najlepšieho gini impurity indexu vieme zistiť, z ktorých 2 susedných hodnôt bol vypočítaný daný priemer. Tieto 2 hodnoty vyberieme a vypočítame 
                 -- priemer znova
-                val1 = ((((map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))) !! indexOfColumn) !! (snd returnBestIndex)) 
-                val2 = ((((map makeString) $ (map (sortOn fst)) $ (map makeFloat) $ (map makePairsFromPairs (getPairs 0 maxIndex dataInput))) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
+                val1 = ((((map makePairsFromPairs (sortedPairs))) !! indexOfColumn) !! (snd returnBestIndex)) 
+                val2 = ((((map makePairsFromPairs (sortedPairs))) !! indexOfColumn) !! ((snd returnBestIndex) +1)) 
 
                 -- Vrati priemer podla kotreho budeme splitovat
                 returnAverage = calcAverage (read (fst val1) :: Float) (read (fst val2) :: Float)
 
                 -- Split list vrati 2 zoznami - menšie a väčšie ako threshold
-                splitList = ([x | x <- dataInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- dataInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
+                splitList = ([x | x <- cleanInput, (read (x !! indexOfColumn) :: Float) <= returnAverage], [x | x <- cleanInput, (read (x !! indexOfColumn) :: Float) > returnAverage])
 
                 -- Vytvoríme uzol a rekurzivne volame doTrain na dcérskych uzloch s dielčimi zoznamami
                 in (Node indexOfColumn returnAverage) (doTrain (fst splitList)) (doTrain (snd splitList))
+
 
 -- Výpočet jedného váženého Gini indexu
 glueTogether :: Eq b => [(String, b)] -> Int -> Float
@@ -106,10 +108,11 @@ glueTogether inputList index =
 
 -- Vráti celkový počet všetkých tried
 totalNumber :: (Eq a, Eq b, Num a) => [(a, b)] -> a
-totalNumber (x:xs) 
-    | xs == [] = (fst x)
-    | xs /= [] = (fst x) + totalNumber xs
-    | otherwise = error "totalNumber - CRITICAL ERROR"
+totalNumber [] = 0
+totalNumber (x:[]) = fst x
+totalNumber (x:xs) = (fst x) + totalNumber xs
+    -- | xs == [] = (fst x)
+    -- | otherwise = error "totalNumber - CRITICAL ERROR"
 
 -- Výpočet Gini impurity je list
 calculateGini :: (Fractional a, Eq a, Eq b) => a -> [(a, b)] -> a
@@ -117,7 +120,8 @@ calculateGini totalNumber list = 1 - (helper list totalNumber)
     where helper (x:xs) totalNumber
             | xs == [] = ((((fst x))/ ( (totalNumber)))^2)
             | xs /= [] = ((((fst x)) / ((totalNumber)))^2) + (helper xs totalNumber)     
-            | otherwise = error "calculateGini - CRITICAL ERROR"     
+            | otherwise = error "calculateGini - CRITICAL ERROR" 
+          helper [] _ = 2        
 
 -- listSizes ginies
 calculateWeightedGini :: Fractional a => [a] -> [a] -> a -> a
@@ -183,7 +187,8 @@ calcAverage :: Fractional a => a -> a -> a
 calcAverage x y = (x+y)/2
 
 splitByAvg :: Float -> [(String, b)] -> ([(String, b)], [(String, b)])
-splitByAvg threshold list = ([x | x <- list, (read (fst x) :: Float) <= threshold], [x | x <- list, (read (fst x) :: Float) > threshold])
+--splitByAvg threshold list = ([x | x <- list, (read (fst x) :: Float) <= threshold], [x | x <- list, (read (fst x) :: Float) > threshold])
+splitByAvg threshold list = partition (\x -> read (fst x) <= threshold) list
 
 -- PRIKLAD VSTUPU
 -- callIncrement (extractLabels [["7","N"],["12","N"],["18","Y"],["35","Y"],["38","Y"],["50","N"],["83","N"]]) (map snd [(1, "N"), (2, "Y"), (3,"N")])
@@ -210,7 +215,20 @@ extractLabels lists = helper (map snd lists) []
                 | x `elem` seen = helper xs seen  
                 | otherwise = (0, x) : helper xs (x : seen)     
 
+-- Sort funckia, kedze merlin nepodporuje sortOn
+sortLists :: Ord a => ([a], [b]) -> ([a], [b])
+sortLists (xs, ys) = (sortedXs, ys')
+    where
+        combined = zip xs ys
+        sortedCombined = sortBy (\(x1, _) (x2, _) -> compare x1 x2) combined
+        (sortedXs, ys') = unzip sortedCombined  
 
+-- Na merlinovi treba odstranit '\r' na konci riadkov
+removeItem :: Eq a => a -> [a] -> [a]
+removeItem _ [] = []
+removeItem x (y:ys) 
+        | x == y = removeItem x ys
+        | otherwise = y : removeItem x ys        
 
 
 ------  Klasifikácia ------------------------------------------
@@ -231,9 +249,9 @@ classifyAll (x:xs) tree
 -- Ak narazíme na Leaf, vrátime triedu
 classification :: [Float] -> Tree -> String
 classification [] (Node a b left right) = error "Ended on a node"
-classification (x:xs) (Node a b left right) 
-    | x <= b = classification xs left
-    | otherwise = classification xs right
+classification values (Node a b left right) 
+    | (values !! a) <= b = classification values left
+    | otherwise = classification values right
 classification x (Leaf a) = a    
 
 
@@ -293,7 +311,7 @@ parseTree (x:xs)
     | (head x) == "Node" = Node (read (x !! 1) :: Int) (read (x !! 2) :: Float) (parseTree (take (getSndFromFind (x:xs)) xs)) (parseTree (drop (getSndFromFind (x:xs)) xs))
     | (head x) == "Leaf" && (not (null xs)) = error "Not a tree" 
     | (head x) == "Leaf" = Leaf (x !! 1) 
-    | otherwise = error "COSKA STRASNE NEDOBRE"
+    | otherwise = error "parseTree - Critical error, probably not a tree"
     where getSndFromFind (x:xs) = snd (findNestLevel ((level x)+1) xs) 
             where level element =  (read (last element) :: Float)      
   
